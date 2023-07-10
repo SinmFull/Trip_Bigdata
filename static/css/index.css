@@ -169,6 +169,14 @@ table tr:nth-child(even){
     /* border: 1px solid black;  1像素宽的黑色实线边框 */
 }
 
+.left-tag-container-score{
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-bottom: 5px;
+    width: 95%;
+    background-color:white;
+}
+
 .right-tag-container{
     margin-left: 10px;
     margin-right: 10px;
