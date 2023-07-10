@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>景点数据可视化展示</title>
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="this is my page">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+{#    <link href="/static/leaflet/leaflet.css" rel="stylesheet">#}
+    <link href="//cdn.bootcss.com/leaflet/0.7.7/leaflet.css" rel="stylesheet">
+  	<link rel="stylesheet" href="/static/css/typeahead.css" type="text/css">
+    <link rel="stylesheet" href="/static/css/index.css">
+  </head>
+  <body>
+  	<div class="title">中国旅游数据展示</div>
+    <div id="map"></div>
+    <div class="func">
+        <button class="tips" id='mylocation'>点击查附近</button>
+        <div class="tips">
+            <input  id='toggleCheckbox'  type="checkbox" >
+            <label for="toggleCheckbox">根据景点热度推荐</label>
+        </div>
+        <div class="tips">
+            <input  id='toggleCheckboxTag'  type="checkbox" >
+            <label for="toggleCheckboxTag">根据标签为您推荐</label>
+        </div>
+        
+        <input class="typeahead" type="text" placeholder="请输入名称" id="myInput">
+
+        <div id="recommand" style = "display:none">
+            <div class="tt-menu" style="position: absolute; top: 100%; left: 0px; z-index: 100;" id="recommand" >
+                <div id="recommandData" class="tt-dataset tt-dataset-0">
+                    <!-- <div id="recommandData" class="tt-suggestion tt-selectable" > </div> -->
+                </div>
+            </div>
+        </div>
+
+        <div id="recommandTag" style = "display:none"  class = "">
+            <div class="tt-menu-tag" style="position: absolute; top: 100%; left: 0px; z-index: 100;" id="recommandTag" >
+                <div class="tt-dataset tt-dataset-0" >
+                    <!-- 上边的标签多选框 -->
+                    <div class="left-tag-container">
+                        <label><input type="checkbox" id="tag1">5A</label>
+                        <label><input type="checkbox" id="tag2">4A</label>
+                        <label><input type="checkbox" id="tag3">游山玩水</label>
+                        <label><input type="checkbox" id="tag4">游乐场</label>
+                        <label><input type="checkbox" id="tag5">动物园</label>
+                        <label><input type="checkbox" id="tag6">特色展馆</label>
+                        <label><input type="checkbox" id="tag7">度假村</label>
+                        <label><input type="checkbox" id="tag8">文化古迹</label>
+                        <label><input type="checkbox" id="tag9">博物馆</label>
+                    </div>
+                    <!-- <div class="divider"></div> -->
+                    <!-- 下边的推荐景点 -->
+                    <div class="right-tag-container divider" id="tag-data-container"></div>
+                    
+                    <a class="tag-close-button" href="#close" id="btn-close">×</a>  
+                </div>
+            </div>
+        </div>
+
+    
+    </div>
+
+    <!-- 根据标签筛选 -->
+    <script>
+        var toggleCheckboxTag = document.getElementById('toggleCheckboxTag');
+        var contentTag = document.getElementById('recommandTag')
+        toggleCheckboxTag.addEventListener('change', function() {
+            contentTag.style.display = 'none';
+        if (toggleCheckboxTag.checked) {
+            contentTag.style.display = 'block';
+        } else {
+            contentTag.style.display = 'none';
+        }
+        });
+
+        const recommandTag = document.getElementById('recommandTag');
+        const btnClose = document.getElementById('btn-close');
+        btnClose.addEventListener('click', function() {
+            recommandTag.style.display = 'none';
+            toggleCheckboxTag.checked = false;
+        });
+    </script>
+
+    <script src="//cdn.bootcss.com/leaflet/0.7.7/leaflet.js"></script>
+    <script type="text/javascript" src="/static/js/leaflet-heat.js"></script>
+    <script type="text/javascript" src="/static/js/jquery-2.1.1.min.js"></script>
+    <script type="text/javascript" src="/static/js/typeahead.bundle.min.js"></script>
+    <script type="text/javascript" src="/static/js/echarts.min.js"></script>
+    <script type="text/javascript" src="/static/layer/layer.js"></script>
+    
+    <script type="text/javascript">
+        
+    var toggleCheckbox = document.getElementById('toggleCheckbox');
+    var content = document.getElementById('recommand')
+    toggleCheckbox.addEventListener('change', function() {
+        content.style.display = 'none';
+    if (toggleCheckbox.checked) {
+        content.style.display = 'block';
+    } else {
+        content.style.display = 'none';
+    }
+    });
+
+    var map = L.map('map', {
+        tapTolerance: 25
+    }).setView(L.latLng(38.993572058209466, 106.435546875), 4);
+    var baseLayers = {
+        '深色底图': L.tileLayer('//map.geoq.cn/ArcGIS/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'geoq'
+        }),
+        "卫星地图": L.tileLayer('//www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+            attribution: 'Google Map'
+        }),
+        "电子地图": L.tileLayer('//webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            subdomains: "1234",
+            attribution: '高德地图'
+        }).addTo(map),
+    };
+
+    var layerControl = L.control.layers(baseLayers, {}, {
+        position: 'topleft',
+        collapsed: true
+    }).addTo(map);
+    var highlight = {}; //高亮符号
+    var lastLayer; //最后点击
+    var trip;
+    var labelgroup = new L.LayerGroup();
+
+    $.getJSON('get-poi-data/', function(data) {
+        
+        var data_recommand = data.features;
+        // 在这里处理获取到的数据
+        var recommandDataContainer = document.getElementById('recommandData');
+        var data_recommand_1 = data_recommand.slice(0, 10);
+
+        data_recommand_1.forEach(function(item) {
+        var itemElement = document.createElement('div');
+        itemElement.innerHTML = item.properties.name + ',热度:' + item.properties.hot_score;
+        itemElement.className = 'tt-suggestion tt-selectable';
+
+        itemElement.addEventListener('click', function fillValue() {
+                var inputValue = item.properties.name;
+                // window.location.href = item.url; // 在当前窗口进行跳转
+                document.getElementById("myInput").value = inputValue;
+                // console.log(document.getElementById("myInput").value);
+                content.style.display = 'none';
+                toggleCheckbox.checked = false;
+                // map.setView(L.latLng(50, 115), 4);
+            });
+        recommandDataContainer.appendChild(itemElement);
+        });
+
+        //供渲染带tag的景点
+        const tagData = data.features;
+        tagDataList = []
+        for (let i = 0; i < tagData.length; i++)
+        {
+            tagDataList.push(tagData[i].properties);
+        }
+        console.log(tagDataList);
+        console.log(typeof tagDataList[0].tags);
+
+        const tag1Checkbox = document.getElementById('tag1');   
+        const tag2Checkbox = document.getElementById('tag2');
+        const tag3Checkbox = document.getElementById('tag3');
+        const tag4Checkbox = document.getElementById('tag4');
+        const tag5Checkbox = document.getElementById('tag5');
+        const tag6Checkbox = document.getElementById('tag6');
+        const tag7Checkbox = document.getElementById('tag7');
+        const tag8Checkbox = document.getElementById('tag8');
+        const tag9Checkbox = document.getElementById('tag9');
+
+        const tagDataContainer = document.getElementById('tag-data-container');
+        tag1Checkbox.addEventListener('change', renderData);
+        tag2Checkbox.addEventListener('change', renderData);
+        tag3Checkbox.addEventListener('change', renderData);
+        tag4Checkbox.addEventListener('change', renderData);
+        tag5Checkbox.addEventListener('change', renderData);
+        tag6Checkbox.addEventListener('change', renderData);
+        tag7Checkbox.addEventListener('change', renderData);
+        tag8Checkbox.addEventListener('change', renderData);
+        tag9Checkbox.addEventListener('change', renderData);
+
+        // 渲染数据函数
+        function renderData() {
+        // 清空数据容器
+        tagDataContainer.innerHTML = '';
+
+        // 获取选中的标签
+        const selectedTags = [];
+        if (tag1Checkbox.checked) selectedTags.push('5A');
+        if (tag2Checkbox.checked) selectedTags.push('4A');
+        if (tag3Checkbox.checked) selectedTags.push('游山玩水');
+        if (tag4Checkbox.checked) selectedTags.push('游乐场');
+        if (tag5Checkbox.checked) selectedTags.push('动物园');
+        if (tag6Checkbox.checked) selectedTags.push('特色展馆');
+        if (tag7Checkbox.checked) selectedTags.push('度假村');
+        if (tag8Checkbox.checked) selectedTags.push('文化古迹');
+        if (tag9Checkbox.checked) selectedTags.push('博物馆');
+        // 过滤匹配的数据
+        const filteredData = tagDataList.filter(item => {
+            return selectedTags.every(tag => item.tags.includes(tag));
+        });
+
+        var toggleCheckboxTag = document.getElementById('toggleCheckboxTag');
+        // 渲染匹配的数据
+        filteredData.forEach(item => {
+            console.log(item.tags);
+            const itemElement = document.createElement('div');
+            itemElement.classList.add('tag-recommand-font');
+            itemElement.textContent = item.name + " tags:"+item.tags;
+            itemElement.addEventListener('mouseenter', function() {
+                itemElement.classList.add('highlight');
+            });
+            itemElement.addEventListener('mouseleave', function() {
+                itemElement.classList.remove('highlight');
+            });
+            itemElement.addEventListener('click', function fillValue() {
+                var inputValue = item.name;
+                // window.location.href = item.url; // 在当前窗口进行跳转
+                document.getElementById("myInput").value = inputValue;
+                var recommandTag = document.getElementById('recommandTag')
+                
+                // console.log(document.getElementById("myInput").value);
+                recommandTag.style.display = 'none';
+                toggleCheckboxTag.checked = false;
+                toggleCheckbox.checked = false;
+                // map.setView(L.latLng(50, 115), 4);
+            });
+            tagDataContainer.appendChild(itemElement);
+        });
+        }
+
+        
+        var contentTag = document.getElementById('recommandTag')
+        toggleCheckboxTag.addEventListener('change', function() {
+            contentTag.style.display = 'none';
+        if (toggleCheckboxTag.checked) {
+            contentTag.style.display = 'block';
+        } else {
+            contentTag.style.display = 'none';
+        }
+        });
+
+        const recommandTag = document.getElementById('recommandTag');
+        const btnClose = document.getElementById('btn-close');
+        btnClose.addEventListener('click', function() {
+            recommandTag.style.display = 'none';
+            toggleCheckboxTag.checked = false;
+        });
+
+        // console.log(data);
+        trip = L.geoJson(data, {
+            pointToLayer: function(feature, latlng) {
+                var marker = L.circleMarker(latlng, {
+                    radius: 5,
+                    color: '#fff',
+                    fill: true,
+                    weight: 2,
+                    opacity: 1,
+                    fillColor: '#ffc7c7',
+                    fillOpacity: 1
+                });
+                var content ='<table border="0.3" style="width: 300px; height: 250px; background-color: #e7f7d1; z-index: 999;" >'+
+                    '<tr>'+
+                    '<td colspan="2" align="center">' +
+                    '<img src="' + feature.properties.cover_image + '" alt="Image" style="max-width: 100%; max-height: 175px;">' +
+                    '</td>'+
+                    '<tr>'+
+                    '<th>景点名称</th>'+
+                    //onclick="data() 动态弹出层
+                    '<td ">' + feature.properties.name +'</td>'+
+                    '<tr>'+
+                    '<tr>'+
+                    '<th>景点英文名称</th>'+
+                    //onclick="data() 动态弹出层
+                    '<td ">' + feature.properties.english_name +'</td>'+
+                    '<tr>'+
+                    '<th>标签</th>'+
+                    '<td>' + feature.properties.tags +'</td>'+
+                    '</tr>'+
+                    '<tr>'+
+                    '<th>特点</th>'+
+                    '<td>' + feature.properties.features +'</td>'+
+                    '</tr>'+
+                    '<tr>'+
+                    '<th>热度</th>'+
+                    '<td>'+ feature.properties.hot_score +'</td>'+
+                    '</tr>'+
+                    '<tr>'+
+                    '<th>评分(评论数)</th>'+
+                    '<td>'+ feature.properties.rating_score + '(' + feature.properties.review_count + ')' + '</td>'+
+                    '</tr>'+
+                    '<tr>'+
+                    '<th>票价</th>'+
+                    '<td>'+
+                    '成人:' + feature.properties.adult_ticket_price + ';' +
+                    '老人:' + feature.properties.senior_ticket_price + ';' +
+                    '学生:' + feature.properties.student_ticket_price + ';' +
+                    '儿童:' + feature.properties.child_ticket_price +
+                    '</td>'+
+                    '</tr>'+
+                    '<tr>'+
+                    '<th>推荐游玩时间</th>'+
+                    '<td>'+ feature.properties.recommended_duration +'</td>'+
+                    '</tr>'+
+                    '<tr>'+
+                    '<th>地址</th>'+
+                    '<td>'+ feature.properties.address +'</td>'+
+                    '</tr>'+
+                    '</table>';
+                //定义点击弹窗事件
+                var popup =L.popup();
+                function onMapClick(e){
+                    popup.setLatLng(e.latlng).setContent(content).openOn(map);
+                };
+                //marker弹窗事件
+                marker.on('click', function(e) {
+                    onMapClick(e);
+                });
+                marker.on('mouseover', function(e) {
+                });
+                marker.on('mouseout', function(e) {
+                    e.target.setRadius(5);
+                    if (map.hasLayer(lastLayer)) {
+                        map.removeLayer(lastLayer);
+                        map.removeLayer(popup);
+                    }
+                });
+                labelgroup.addLayer(L.marker(latlng, {
+                    icon: L.divIcon({
+                        iconSize: null,
+                        className: 'label-all',
+                        html: '<div>' + feature.properties.Name + '</div>',
+                        coordinates: '<div>' + feature.geometry.coordinates + '</div>'
+                    })
+                }));
+
+                return marker;
+            }
+        }).addTo(map);
+        var heatpoints = data.features.map(function(value) {
+            var point = value.geometry.coordinates.reverse();
+            point.push(1);
+            return point;
+        });
+        var heat = L.heatLayer(heatpoints, {
+            radius: 15,
+            blur: 15,
+            minOpacity: 0.5
+        }).addTo(map);
+        trip.bringToFront();
+        layerControl.addOverlay(trip, '分布点');
+        layerControl.addOverlay(heat, '分布热力图');
+        layerControl.addOverlay(labelgroup, '标注');
+        map.on('zoomend', function(e) {
+            if (map.getZoom() > 8) {
+                if (!map.hasLayer(labelgroup)) {
+                    map.addLayer(labelgroup);
+                }
+            } else {
+                if (map.hasLayer(labelgroup)) {
+                    map.removeLayer(labelgroup);
+                }
+            }
+        });
+        initQuery();
+    });
+
+
+    //弹出一个iframe层
+    function data() {
+        layer.open({
+            type: 2,
+            title: '详细信息查看',
+            maxmin: true,
+            shadeClose: true, //点击遮罩关闭层
+            area : ['800px' , '520px'],
+            content: 'https://you.ctrip.com/place/Chuzhou228.html'
+        });
+    }
+
+    $("#mylocation").on("click", function() {
+        $("#mylocation").text("正在定位中")
+        map.locate({
+            setView: true,
+            maxZoom: 8
+        });
+    })
+
+    $('#myInput').on('input', function(event) {
+        console.log($(this).val());
+        // 执行其他操作...
+    });
+
+
+    map.on('locationfound', function() {
+        $("#mylocation").text("查看我的附近")
+    });
+
+    map.on('locationerror', function() {
+        $("#mylocation").text("查看我的附近")
+        alert("抱歉，定位失败")
+    });
+
+    // 定位功能使用 leaflet 自带的方法来替换了下面调用原生 API的方式
+    // 但是在某些PC下 会返回错误的经纬度
+     $("#mylocation").on("click", function() {
+         $("#mylocation").text("正在定位中")
+         getCurrentPosition(function(lat, lon) {
+             var latlng = L.latLng(lat, lon);
+             console.log(lat);
+             console.log(lon);
+             map.setView(latlng, 11);
+             $("#mylocation").text("查看我的附近")
+         }, function() {
+             alert("抱歉，该功能无法使用")
+             $("#mylocation").text("查看我的附近")
+         })
+         })
+     function getCurrentPosition(callback, error) {
+         if ("geolocation" in navigator) {
+             navigator.geolocation.getCurrentPosition(function(position) {
+                 var coords = position.coords;
+                 var lat = coords.latitude;
+                 var lon = coords.longitude;
+                 callback && callback(lat, lon);
+             });
+         } else {
+             // 不支持地理位置api
+             error && error()
+         }
+     }
+
+    function initQuery() {
+        var engine = new Bloodhound({
+            datumTokenizer: Bloodhound.tokenizers.whitespace,
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            local: function() {
+                var names = [];
+                trip.eachLayer(function(l) {
+                    names.push(l.feature.properties.name);
+                    // names.push(l.feature.properties.name);
+                });
+                return names;
+            }
+        });
+        engine.initialize();
+        $('.typeahead').typeahead({
+            highlight: true
+        }, {
+            source: engine
+        });
+        $('.typeahead').click(function(){
+            $(this).val(document.getElementById("myInput").value);
+        })
+        $('.typeahead').bind('typeahead:select', function(ev, suggestion) {
+            // console.log(ev);
+            trip.eachLayer(function(l) {
+                if (l.feature.properties.name === suggestion) {
+                    // console.log(suggestion);
+                    map.fitBounds(l, {
+                        maxZoom: 18
+                    });
+                }
+            });
+        });
+    }
+    </script>
+
+  </body>
+</html>
