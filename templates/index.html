@@ -39,14 +39,14 @@
                 <div class="tt-dataset tt-dataset-0" >
                     <!-- 上边的标签多选框 -->
                     <div class="left-tag-container">
-                        <div style="color: rgb(141, 137, 133);"> 评分 </div>
+                        <div style="color: rgb(104, 161, 175);"> 评分 </div>
                         <label><input type="checkbox" id="tag11">4.5及以上</label>
                         <label><input type="checkbox" id="tag12">4.0及以上</label>
                         <label><input type="checkbox" id="tag13">3.5及以上</label>
                         <label><input type="checkbox" id="tag14">不限</label>
                     </div>
                     <div class="left-tag-container">
-                        <div style="color: rgb(141, 137, 133);"> 标签 </div>
+                        <div style="color: rgb(104, 161, 175);"> 标签 </div>
                         <label><input type="checkbox" id="tag1">5A</label>
                         <label><input type="checkbox" id="tag2">4A</label>
                         <label><input type="checkbox" id="tag3">游山玩水</label>
@@ -56,6 +56,10 @@
                         <label><input type="checkbox" id="tag7">度假村</label>
                         <label><input type="checkbox" id="tag8">文化古迹</label>
                         <label><input type="checkbox" id="tag9">博物馆</label>
+
+                        <label><input type="checkbox" id="tag20">地标观景</label>
+                        <label><input type="checkbox" id="tag21">城市公园</label>
+                        <label><input type="checkbox" id="tag22">海滨沙滩</label>
                     </div>
                     
                     <!-- <div class="divider"></div> -->
@@ -183,6 +187,10 @@
         const tag12Checkbox = document.getElementById('tag12');
         const tag13Checkbox = document.getElementById('tag13');
         const tag14Checkbox = document.getElementById('tag14');
+        const tag20Checkbox = document.getElementById('tag20');
+        const tag21Checkbox = document.getElementById('tag21');
+        const tag22Checkbox = document.getElementById('tag22');
+
 
         const tagDataContainer = document.getElementById('tag-data-container');
 
@@ -199,6 +207,9 @@
         tag12Checkbox.addEventListener('change', renderData);
         tag13Checkbox.addEventListener('change', renderData);
         tag14Checkbox.addEventListener('change', renderData);
+        tag20Checkbox.addEventListener('change', renderData);
+        tag21Checkbox.addEventListener('change', renderData);
+        tag22Checkbox.addEventListener('change', renderData);
         // 渲染数据函数
         function renderData() {
         // 清空数据容器
@@ -216,6 +227,9 @@
         if (tag7Checkbox.checked) selectedTags.push('度假村');
         if (tag8Checkbox.checked) selectedTags.push('文化古迹');
         if (tag9Checkbox.checked) selectedTags.push('博物馆');
+        if (tag9Checkbox.checked) selectedTags.push('地标观景');
+        if (tag9Checkbox.checked) selectedTags.push('城市公园');
+        if (tag9Checkbox.checked) selectedTags.push('海滨沙滩');
         if (tag11Checkbox.checked) selected_score = 4.5;
         if (tag12Checkbox.checked) selected_score = 4.0;
         if (tag13Checkbox.checked) selected_score = 3.5;
@@ -372,7 +386,7 @@
                     icon: L.divIcon({
                         iconSize: null,
                         className: 'label-all',
-                        html: '<div>' + feature.properties.Name + '</div>',
+                        html: '<div>' + feature.properties.name + '</div>',
                         coordinates: '<div>' + feature.geometry.coordinates + '</div>'
                     })
                 }));

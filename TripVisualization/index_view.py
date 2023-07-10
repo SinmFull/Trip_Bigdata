@@ -26,18 +26,3 @@ def get_poi_data(request):
     # print(sorted_list[0])
     geojson = {'type': 'FeatureCollection', 'features': sorted_list}
     return JsonResponse(geojson, safe=False)
-
-def post_tag_data(request):
-    if request.method == 'POST':
-        # 获取前端发送的数据
-        key1 = request.POST.get('key1')
-        
-        # 在此处进行数据处理逻辑
-        # ...
-        
-        # 返回响应给前端
-        response_data = {
-            'message': 'Data received and processed successfully!'
-        }
-        return JsonResponse(response_data)
-    return {'a':'1'}
