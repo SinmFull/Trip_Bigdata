@@ -276,7 +276,6 @@
                 document.getElementById("myInput").value = inputValue;
                 var recommandTag = document.getElementById('recommandTag')
                 
-                // console.log(document.getElementById("myInput").value);
                 recommandTag.style.display = 'none';
                 toggleCheckboxTag.checked = false;
                 toggleCheckbox.checked = false;
@@ -486,6 +485,23 @@
              error && error()
          }
      }
+
+    //  function updateRecommendations(){
+    //     initQuery();
+    //     var engine = new Bloodhound({
+    //         datumTokenizer: Bloodhound.tokenizers.whitespace,
+    //         queryTokenizer: Bloodhound.tokenizers.whitespace,
+    //         local: function() {
+    //             var names = [];
+    //             trip.eachLayer(function(l) {
+    //                 names.push(l.feature.properties.name);
+    //                 // names.push(l.feature.properties.name);
+    //             });
+    //             return names;
+    //         }
+    //     });
+    //     engine.initialize();
+    //  }
 
     function initQuery() {
         var engine = new Bloodhound({
